@@ -12,7 +12,7 @@ local sort=table.sort
 local print=print
 
 -- Local Variables for module-only access
-local infinity=1e3
+local infinity=huge
 
 -- No more external access after this point
 _ENV = nil -- or M
@@ -37,7 +37,7 @@ end
 
 function M.distance_matrix(points, inf)
   local size = #points
-  local lambda = 0.5
+  local lambda = 0.8
   local similarities={}
   local indices={}
   local availabilities={}
@@ -46,7 +46,7 @@ function M.distance_matrix(points, inf)
 
   infinity = inf or infinity
 
-  -- initialize the similarity and index matrix
+  -- initialize the similarity and index matrices
   do
     for i=1, size do
       indices[i] = {}
@@ -68,22 +68,25 @@ function M.distance_matrix(points, inf)
 
   -- initialize preference
   do
-    local ret={}
+    local ret = {}
     
     for k,v in pairs(similarities) do
       ret[k] = v
     end
 
     sort(ret)
-    local  preference = ret[floor(#ret/2)]
-    similarities[#ret+1] = preference
+    local N = #ret+1
+    local pref = ret[floor(N/2)] -- preference set to median
+    similarities[N] =  pref -- add preference at end of similarity matrix
 
     for i=1,size do
-      indices[i][i] = #ret+1
+      indices[i][i] = N -- add index of preference to matrix
     end
 
-    print("\nNumber of valid similarities: " .. #ret .. "\n")
-    print("Median preference: " .. preference .. "\n")
+    print("\nNumber of valid similarities: " .. N .. "\n")
+    print("Median similarity: " .. pref)
+    print("Minimum similarity: " .. ret[1])
+    print("Maximum similarity: " .. ret[N-1])
   end
 
   -- initialize availabilities and responsabilities
@@ -98,52 +101,55 @@ function M.distance_matrix(points, inf)
 
   -- local function definitions
 
-  local function update_responsability(i)
+  local function send_responsability(i)
 
-    local idxs = indices[i]
-    local min = huge
+    local sims = {}
+    local max = -huge
     local ind
     local ret
 
-    for k,v in pairs(idxs) do
-      local as = similarities[v]+availabilities[i][k]
-      if as > min then
-	ret = min
-	min = as
+    for k,v in pairs(indices[i]) do
+      local sim = similarities[v]
+      sims[k] = sim
+      local as = sim+availabilities[i][k]
+      if as > max then
+	ret = max
+	max = as
 	ind = k
       end
-  end
+    end
     
     -- update
-    for j,v in pairs(idxs) do
-      responsabilities[j][i] = responsabilities[j][i]*lambda + (1-lambda)*(similarities[v] - (j~=ind and min or ret))
+    for k,ss in pairs(sims) do
+      responsabilities[k][i] = responsabilities[k][i]*lambda + (1-lambda)*(ss - (k~=ind and max or ret))
     end
 
     return true
   end
 
 
-  local function update_availability(j)
+  local function send_availability(k)
   
     local sum = 0
     local rp = {}
 
-    for k,v in pairs(responsabilities[j]) do
-      local r = k~=j and maxi(v,0) or v -- threshold except for self-responsability
-      rp[k] = r
-      sum = sum + r
+    -- sum of positive responsability exemplar k receives from i's
+    for i,r in pairs(responsabilities[k]) do
+      local rr = k~=i and maxi(r,0) or r -- threshold except for self-responsability
+      rp[i] = rr
+      sum = sum + rr
     end
 
-    -- update
-    for i,v in pairs(rp) do
-      local a = j~=i and mini(sum-v, 0) or sum-v -- threshold except for self-availability
-      availabilities[i][j] = availabilities[i][j]*lambda + (1-lambda)*a
+    -- update: limit strong influence of incoming positive responsability
+    for i,r in pairs(rp) do
+      local a = k~=i and mini(sum-r, 0) or sum-r -- threshold except for self-availability
+      availabilities[i][k] = availabilities[i][k]*lambda + (1-lambda)*a
     end
 
     return true
   end
 
-  local function convergence()
+  function RA.convergence()
     local cts={}
 
     for i=1,size do
@@ -159,25 +165,25 @@ function M.distance_matrix(points, inf)
   
   function RA.step()
     for i=1,size do
-      update_responsability(i)
+      send_responsability(i)
     end
 
-    for j=1,size do
-      update_availability(j)
+    for k=1,size do
+      send_availability(k)
     end
 
-    return convergence()
+    return true
   end
 
-  function RA.assignment(cts)
+  function RA.assignment()
     local ret={}
 
     for i=1, size do
       local max=-huge
       local idx=-1
 
-      for k,v in pairs(responsabilities[i]) do
-	  local ra = v+availabilities[i][k]
+      for k,a in pairs(availabilities[i]) do
+	  local ra = a+responsabilities[i][k]
 	  if ra > max then
 	    max = ra
 	    idx = k
