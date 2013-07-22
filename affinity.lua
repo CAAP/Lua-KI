@@ -108,10 +108,11 @@ function M.distance_matrix(points, inf)
     local ind
     local ret
 
+    -- find cluster k that maximize a+s
     for k,v in pairs(indices[i]) do
       local sim = similarities[v]
       sims[k] = sim
-      local as = sim+availabilities[i][k]
+      local as = availabilities[i][k]+sim
       if as > max then
 	ret = max
 	max = as
@@ -119,7 +120,7 @@ function M.distance_matrix(points, inf)
       end
     end
     
-    -- update
+    -- update: input similarity minus largest of a+s
     for k,ss in pairs(sims) do
       responsabilities[k][i] = responsabilities[k][i]*lambda + (1-lambda)*(ss - (k~=ind and max or ret))
     end
@@ -135,30 +136,18 @@ function M.distance_matrix(points, inf)
 
     -- sum of positive responsability exemplar k receives from i's
     for i,r in pairs(responsabilities[k]) do
-      local rr = k~=i and maxi(r,0) or r -- threshold except for self-responsability
+      local rr = k~=i and maxi(r,0) or r -- except for self-responsability
       rp[i] = rr
       sum = sum + rr
     end
 
     -- update: limit strong influence of incoming positive responsability
     for i,r in pairs(rp) do
-      local a = k~=i and mini(sum-r, 0) or sum-r -- threshold except for self-availability
+      local a = k~=i and mini(sum-r, 0) or sum-r -- except for self-availability
       availabilities[i][k] = availabilities[i][k]*lambda + (1-lambda)*a
     end
 
     return true
-  end
-
-  function RA.convergence()
-    local cts={}
-
-    for i=1,size do
-      if (responsabilities[i][i]+availabilities[i][i])>0 then
-	cts[#cts+1] = i
-      end
-    end
-
-    return cts
   end
 
   -- public function definitions
@@ -175,18 +164,39 @@ function M.distance_matrix(points, inf)
     return true
   end
 
+  function RA.convergence()
+    local cts={}
+
+    for i=1,size do
+      if (responsabilities[i][i]+availabilities[i][i])>0 then
+	cts[#cts+1] = i
+      end
+    end
+
+    return cts
+  end
+  
   function RA.assignment()
-    local ret={}
+    local ret = {}
+    local cts = {}
+    
+    -- identify centers
+    for i=1,size do
+      if (responsabilities[i][i]+availabilities[i][i])>0 then
+	cts[#cts+1] = i
+      end
+    end
 
     for i=1, size do
-      local max=-huge
-      local idx=-1
-
-      for k,a in pairs(availabilities[i]) do
-	  local ra = a+responsabilities[i][k]
+      local max = -huge
+      local idx = -1
+      
+      -- find center k that maximize r+a
+      for c,k in pairs(cts) do
+	  local ra = responsabilities[i][k]+availabilities[i][k]
 	  if ra > max then
 	    max = ra
-	    idx = k
+	    idx = c
     	  end
 	end
 
