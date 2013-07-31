@@ -23,7 +23,7 @@ local function shuffle(size, m)
 
   for i=1, m or size do
     j = random(i, size-i+1)  -- taken from libsvm file: svm.cpp || size
-    indices[i], indices[j] = indices[j] or j, indices[i] or i
+    indices[i], indices[j] = indices[j] or j, indices[i] or i  -- easier than using meta_table
   end
 
   return m and {unpack(indices, 1, m)} or indices

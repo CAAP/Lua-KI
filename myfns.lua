@@ -81,12 +81,14 @@ local function positivity(points,except)
 end
 
 local function same(x,y)
-    local ans = true
+    local ans=#x==#y
     
-    for i,_ in pairs(x) do
-        if not(y[i]) then
-            ans = false
-            break
+    if ans then
+        for i,_ in pairs(x) do
+            if not(y[i]) then
+                ans = false
+                break
+            end
         end
     end
     
@@ -152,6 +154,7 @@ function M.histogram(points)
     return ret
 end
 
+M.same=same
 M.maximal=maximal
 M.addition=addition
 M.positivity=positivity
