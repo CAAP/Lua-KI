@@ -7,6 +7,7 @@ local floor=math.floor
 local flines=io.lines
 local gmatch=string.gmatch
 local unpack=table.unpack
+local tonumber=tonumber
 
 -- Local Variables for module-only access
 
@@ -45,13 +46,14 @@ local function match(s,p)
   local ans={}
 
   for w in gmatch(s,p) do
-    ans[#ans+1]=w
+    ans[#ans+1]=tonumber(w)
   end
 
   return ans
 end
 
 -- open a file and reads all lines into a table
+-- only integers -> '(-?%d+)'
 function M.slurp(fname,pattern)
   local ret={}
   local p=pattern or "(-?%d+.%d+)" -- numbers

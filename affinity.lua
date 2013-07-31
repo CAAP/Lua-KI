@@ -2,211 +2,175 @@
 local M = {}
 
 -- Import Section
-local pow=math.pow
 local huge=math.huge
 local maxi=math.max
 local mini=math.min
-local floor=math.floor
+local concat=table.concat
 local pairs=pairs
-local sort=table.sort
 local print=print
 
 -- Local Variables for module-only access
-local infinity=huge
+local lambda=0.8
 
 -- No more external access after this point
 _ENV = nil -- or M
 
 -- Function definitions
 
-local function euclidean(x,y)
-  local ssq = 0.0
+local function propagation(similarities, availabilities, responsabilities)
   
-  for i,v in pairs(x) do
-    ssq = ssq + y[i] and pow(v-y[i],2) or 0  -- allow for sparse vectors
-  end
+    local MM = {}
   
-  return ssq
-end
-
-local function distance(x,y)
-  local d = euclidean(x,y)
+    -- Private function definitions --
   
-  return d < infinity and -d or nil -- sparse matrix: distances greater than infinity are not considered
-end
-
-function M.distance_matrix(points, inf)
-  local size = #points
-  local lambda = 0.8
-  local similarities={}
-  local indices={}
-  local availabilities={}
-  local responsabilities={}
-  local RA={}
-
-  infinity = inf or infinity
-
-  -- initialize the similarity and index matrices
-  do
-    for i=1, size do
-      indices[i] = {}
-    end
-
-    local cnt=0
-    for i=1, size do
-      for j=1+i, size do
-        local d = distance(points[i],points[j])
-        if d then
-	  cnt=cnt+1
-	  similarities[cnt] = d
-	  indices[i][j] = cnt
-	  indices[j][i] = cnt
+    local function send_responsabilities()
+        for i,v in pairs(similarities) do
+            -- find cluster k that maximize a+s        
+            local max = -huge
+            local ind = -1
+            local max2 = -huge
+            
+            --print('Start:',i)
+            
+            for k,s in pairs(v) do
+                local as = availabilities[i][k]+s
+                if availabilities[k] == nil then print(k) end
+                if as >= max2 then
+                    max2 = as
+                    if as > max then
+                        max2 = max
+                        max = as
+                        ind = k
+                    end
+                end
+            end
+            
+            --print(i,ind)
+            
+            -- update responsabilities
+            for k,s in pairs(v) do
+                responsabilities[k][i] = responsabilities[k][i]*lambda + (1-lambda)*(s - (k~=ind and max or max2))
+            end
+            
+            --print('Done:',i)
         end
-      end
-    end
-  end
-
-  -- initialize preference
-  do
-    local ret = {}
-    
-    for k,v in pairs(similarities) do
-      ret[k] = v
-    end
-
-    sort(ret)
-    local N = #ret+1
-    local pref = ret[floor(N/2)] -- preference set to median
-    similarities[N] =  pref -- add preference at end of similarity matrix
-
-    for i=1,size do
-      indices[i][i] = N -- add index of preference to matrix
-    end
-
-    print("\nNumber of valid similarities: " .. N .. "\n")
-    print("Median similarity: " .. pref)
-    print("Minimum similarity: " .. ret[1])
-    print("Maximum similarity: " .. ret[N-1])
-  end
-
-  -- initialize availabilities and responsabilities
-  for i=1,size do
-    availabilities[i] = {}
-    responsabilities[i] = {}
-    for j,_ in pairs(indices[i]) do
-      responsabilities[i][j] = 0
-      availabilities[i][j] = 0
-    end
-  end
-
-  -- local function definitions
-
-  local function send_responsability(i)
-
-    local sims = {}
-    local max = -huge
-    local ind
-    local ret
-
-    -- find cluster k that maximize a+s
-    for k,v in pairs(indices[i]) do
-      local sim = similarities[v]
-      sims[k] = sim
-      local as = availabilities[i][k]+sim
-      if as > max then
-	ret = max
-	max = as
-	ind = k
-      end
+        
+        return true
     end
     
-    -- update: input similarity minus largest of a+s
-    for k,ss in pairs(sims) do
-      responsabilities[k][i] = responsabilities[k][i]*lambda + (1-lambda)*(ss - (k~=ind and max or ret))
+    local function send_availabilities()
+        for k,v in pairs(responsabilities) do
+            -- sum positive responsabilities exemplar k receives from i's
+            local sum = 0
+            local rp = {}
+            
+            for i,r in pairs(v) do
+                local rr = k~=i and maxi(r,0) or r -- except for self-responsability
+                rp[i] = rr
+                sum = sum + rr
+            end
+            
+            -- update availability of center k to i's; limit strong influence of incoming positive responsability
+            for i,r in pairs(rp) do
+                local a = k~=i and mini(sum-r, 0) or (sum-r) -- except for self-availability
+                availabilities[i][k] = availabilities[i][k]*lambda + (1-lambda)*a
+            end
+        end
+        
+        return true
     end
-
-    return true
-  end
-
-
-  local function send_availability(k)
   
-    local sum = 0
-    local rp = {}
+    -- Method definitions --
 
-    -- sum of positive responsability exemplar k receives from i's
-    for i,r in pairs(responsabilities[k]) do
-      local rr = k~=i and maxi(r,0) or r -- except for self-responsability
-      rp[i] = rr
-      sum = sum + rr
+    function MM.responsability(i,j)
+        return responsabilities[i][j]
     end
-
-    -- update: limit strong influence of incoming positive responsability
-    for i,r in pairs(rp) do
-      local a = k~=i and mini(sum-r, 0) or sum-r -- except for self-availability
-      availabilities[i][k] = availabilities[i][k]*lambda + (1-lambda)*a
-    end
-
-    return true
-  end
-
-  -- public function definitions
-  
-  function RA.step()
-    for i=1,size do
-      send_responsability(i)
-    end
-
-    for k=1,size do
-      send_availability(k)
-    end
-
-    return true
-  end
-
-  function RA.convergence()
-    local cts={}
-
-    for i=1,size do
-      if (responsabilities[i][i]+availabilities[i][i])>0 then
-	cts[#cts+1] = i
-      end
-    end
-
-    return cts
-  end
-  
-  function RA.assignment()
-    local ret = {}
-    local cts = {}
     
-    -- identify centers
-    for i=1,size do
-      if (responsabilities[i][i]+availabilities[i][i])>0 then
-	cts[#cts+1] = i
-      end
+    function MM.constants()
+        print('Damping/lambda:',lambda)
+        print('Preference:',similarities[1][1])  -- assume share preference
+        return true
+    end
+  
+    function MM.step()
+        send_responsabilities()
+        send_availabilities()
+        return true
     end
 
-    for i=1, size do
-      local max = -huge
-      local idx = -1
+    function MM.assignment()
+        local ret = {}
+        local exps = {}  -- exemplars k
+        local pts = {}  -- points i
+        local spexp = 0  -- similarity of points to exemplars
+        local expref = 0  -- exemplar preference sum
+    
+        -- identify centers
+        for i,ss in pairs(similarities) do
+            if (responsabilities[i][i]+availabilities[i][i])>0 then
+                exps[#exps+1] = i
+                expref = expref + ss[i]  -- center preference/self-similarity
+                ret[i] = #exps  -- save assignment
+            else
+                pts[#pts+1] = i
+            end
+        end
+
+        -- find most similar exemplar k to each point i
+        for _,i in pairs(pts) do
+            local max = -huge
+            local idx = -1            
+            
+            for c,k in pairs(exps) do
+                local s = similarities[i][k] or -huge
+                if s > max then
+                    max = s
+                    idx = c
+                end
+            end
+
+            if max==-huge then print(i) end  -- DEBUG
+            
+            spexp = spexp + max  -- add similarity to sum
+            ret[i] = idx  -- save center assignment
+        end
+
+        print(concat(exps,', '))
+        print('Clusters found:', #exps)
+        print('Fitness/Net similarity:\n\t', expref+spexp)
+        print('Similarity of data points to exemplars:\n\t', spexp)
+        print('Exemplar preference:\n\t', expref)
+    
+        return ret, exps, spexp, expref
+    end
+
+  return MM
+end
+
+-- Public function definitions
+
+function M.initialize(similarities, preference, damping)
+    local availabilities={}
+    local responsabilities={}
+
+    lambda = damping or lambda
+    
+    -- initialize preferences
+    for i,v in pairs(similarities) do
+        similarities[i][i] = preference
+    end
+    
+    -- initialize availabilities and responsabilities
+    for i,v in pairs(similarities) do
+        availabilities[i] = {}
+        responsabilities[i] = {}
+        for j,s in pairs(v) do
+            responsabilities[i][j] = 0
+            availabilities[i][j] = 0
+        end
+    end
       
-      -- find center k that maximize r+a
-      for c,k in pairs(cts) do
-	  local ra = responsabilities[i][k]+availabilities[i][k]
-	  if ra > max then
-	    max = ra
-	    idx = c
-    	  end
-	end
-
-      ret[i] = idx
-    end
-
-    return ret
-  end
-
-  return RA
+  return propagation(similarities, availabilities, responsabilities)
 end
 
 return M
