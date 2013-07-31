@@ -81,18 +81,19 @@ local function positivity(points,except)
 end
 
 local function same(x,y)
-    local ans=#x==#y
+    local ans = true
+    local cx,cy = 0,0
     
-    if ans then
-        for i,_ in pairs(x) do
-            if not(y[i]) then
-                ans = false
-                break
-            end
-        end
+    for _ in pairs(y) do
+        cy = cy + 1
     end
     
-    return ans
+    for i,_ in pairs(x) do
+        ans = ans and (y[i] or false)
+        cx = cx + 1
+    end
+
+    return ans and cx==cy
 end
 
 function M.unique(histos)
@@ -145,7 +146,7 @@ function M.histogram(points)
         local h = {}
         
         for _,k in pairs(kk) do
-            h[k] = h[k] and (h[k]+1) or 1
+            h[k] = (h[k] or 0) + 1
         end
         
         ret[i] = h
