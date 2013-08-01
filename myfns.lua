@@ -108,12 +108,12 @@ function M.unique(histos)
     local i,h = next(ret)
     while h do
         uqs[#uqs+1] = h
-        all[i] = #uqs
+        all[i] = i
         ret[i] = nil
         for j,v in pairs(ret) do
             if same(h,v) then
                 ret[j] = nil
-                all[j] = #uqs
+                all[j] = i
             end
         end
         
