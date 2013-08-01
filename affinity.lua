@@ -148,7 +148,7 @@ local function propagation(similarities, availabilities, responsabilities)
 end
 
 function M.cluster(exemplars, points, fdis)
-    ret = {}
+    local ret = {}
     
     for i,h in pairs(points) do
         local max = -huge
