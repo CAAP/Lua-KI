@@ -88,12 +88,22 @@ local function same(x,y)
         cy = cy + 1
     end
     
-    for i,_ in pairs(x) do
-        ans = ans and (y[i] or false)
-        cx = cx + 1
+    for _ in pairs(x) do
+        cx= cx + 1
+    end
+    
+    ans = cx==cy
+    
+    if ans then
+        for i,_ in pairs(x) do
+            if not(y[i]) then
+                ans = false
+                break
+            end
+        end
     end
 
-    return ans and cx==cy
+    return ans
 end
 
 function M.unique(histos)

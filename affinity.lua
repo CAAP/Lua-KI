@@ -119,7 +119,7 @@ local function propagation(similarities, availabilities, responsabilities)
         -- find most similar exemplar k to each point i
         for _,i in pairs(pts) do
             local max = -huge
-            local idx = -1            
+            local idx = -1
             
             for c,k in pairs(exps) do
                 local s = similarities[i][k] or -huge
@@ -145,6 +145,28 @@ local function propagation(similarities, availabilities, responsabilities)
     end
 
   return MM
+end
+
+function M.cluster(exemplars, points, fdis)
+    ret = {}
+    
+    for i,h in pairs(points) do
+        local max = -huge
+        local idx = -1
+        
+        for k,hh in pairs(exemplars) do
+            local s = -fdis(h,hh)
+            if s > max then
+                max = s
+                idx = k
+            end
+        end
+        
+        if max==-huge then print(i) end  -- DEBUG
+        ret[i] = idx  -- save center assignment 
+    end
+    
+    return ret
 end
 
 -- Public function definitions
