@@ -84,15 +84,15 @@ local function same(x,y)
     local ans = true
     local cx,cy = 0,0
     
-    for _ in pairs(y) do
-        cy = cy + 1
-    end
-    
-    for _ in pairs(x) do
-        cx= cx + 1
-    end
-    
-    ans = cx==cy
+    --for _ in pairs(y) do
+    --    cy = cy + 1
+    --end
+    --
+    --for _ in pairs(x) do
+    --    cx= cx + 1
+    --end
+    --
+    --ans = cx==cy
     
     if ans then
         for i,_ in pairs(x) do
