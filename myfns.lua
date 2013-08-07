@@ -179,8 +179,8 @@ function M.stats(points)
             sumsq = sumsq + x*x
         end
         
-        local mean = sum/size
-        ret[ii] = {mean, sqrt(sumsq/size-mean*mean)}
+        local mean = sum/cnt
+        ret[ii] = {mean, sqrt(sumsq/cnt-mean*mean)}
     end
     
     return ret
