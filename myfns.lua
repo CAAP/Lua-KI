@@ -167,19 +167,20 @@ function M.histogram(points)
 end
 
 function M.stats(points)
-    local size = #points
-    local sum = 0
-    local sums = 0
     local ret = {}
     
     for ii,v in pairs(points) do
+        local cnt = #v
+        local sum = 0
+        local sumsq = 0
+        
         for _,x in pairs(v) do
             sum = sum + x
-            sums = sum + x*x
+            sumsq = sumsq + x*x
         end
         
         local mean = sum/size
-        ret[ii] = {mean, sqrt(sums/size-mean*mean)}
+        ret[ii] = {mean, sqrt(sumsq/size-mean*mean)}
     end
     
     return ret
