@@ -5,6 +5,7 @@ local M = {}
 local huge=math.huge
 local maxi=math.max
 local mini=math.min
+local sqrt=math.sqrt
 local concat=table.concat
 local pairs=pairs
 local print=print
@@ -160,6 +161,25 @@ function M.histogram(points)
         end
         
         ret[i] = h
+    end
+    
+    return ret
+end
+
+function M.stats(points)
+    local size = #points
+    local sum = 0
+    local sums = 0
+    local ret = {}
+    
+    for ii,v in pairs(points) do
+        for _,x in pairs(v) do
+            sum = sum + x
+            sums = sum + x*x
+        end
+        
+        local mean = sum/size
+        ret[ii] = {mean, sqrt(sums/size-mean*mean)}
     end
     
     return ret
