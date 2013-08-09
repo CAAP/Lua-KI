@@ -196,7 +196,7 @@ function M.concise(path, ret)
     
     local ret = ret or {}
     for _,ii in pairs(uqs) do
-        ret[#ret+1]=data(ii)
+        ret[#ret+1]=data[ii]
     end
     
     return ret
