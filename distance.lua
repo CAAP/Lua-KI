@@ -115,13 +115,18 @@ end
 function M.bintersection(x,y)
     local sum = 0
     local xsum = 0
+    local ysum = 0
+    
+    for _ in pairs(y) do
+        ysum = ysum + 1  -- when N(x) ~= N(y) choose the greatest
+    end
     
     for i,_ in pairs(x) do
         sum = sum + (y[i] and 1 or 0)
         xsum = xsum + 1
     end
     
-    return 1-sum/xsum
+    return 1-sum/(xsum>ysum and xsum or ysum)
 end
 
 return M
