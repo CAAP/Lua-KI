@@ -99,7 +99,7 @@ local function propagation(similarities, availabilities, responsabilities)
     end
 
     function MM.assignment()
-        local ret = {}
+    --    local ret = {}
         local exps = {}  -- exemplars k
         local pts = {}  -- points i
         local spexp = 0  -- similarity of points to exemplars
@@ -109,39 +109,43 @@ local function propagation(similarities, availabilities, responsabilities)
         for i,ss in pairs(similarities) do
             if (responsabilities[i][i]+availabilities[i][i])>0 then
                 exps[#exps+1] = i
-                expref = expref + ss[i]  -- center preference/self-similarity
-                ret[i] = #exps  -- save assignment
+               expref = expref + ss[i]  -- center preference/self-similarity
+    --            ret[i] = #exps  -- save assignment
             else
                 pts[#pts+1] = i
             end
         end
 
-        -- find most similar exemplar k to each point i
-        for _,i in pairs(pts) do
-            local max = -huge
-            local idx = -1
-            
-            for c,k in pairs(exps) do
-                local s = similarities[i][k] or -huge
-                if s > max then
-                    max = s
-                    idx = c
+        if #exps>0 then
+            -- find most similar exemplar k to each point i
+            for _,i in pairs(pts) do
+                local max = -huge
+                local idx = -1
+                
+                for c,k in pairs(exps) do
+                    local s = similarities[i][k] or -huge
+                    if s > max then
+                        max = s
+                        idx = c
+                    end
                 end
-            end
-
-            if max==-huge then print(i) end  -- DEBUG
-            
-            spexp = spexp + max  -- add similarity to sum
-            ret[i] = idx  -- save center assignment
-        end
-
-        print(concat(exps,', '))
-        print('Clusters found:', #exps)
-        print('Fitness/Net similarity:\n\t', expref+spexp)
-        print('Similarity of data points to exemplars:\n\t', spexp)
-        print('Exemplar preference:\n\t', expref)
     
-        return ret, exps, spexp, expref
+                if max==-huge then print(i) end  -- DEBUG
+                
+                spexp = spexp + max  -- add similarity to sum
+    --            ret[i] = idx  -- save center assignment
+            end
+    
+            print(concat(exps,', '))
+            print('Clusters found:', #exps)
+            print('Fitness/Net similarity:\n\t', expref+spexp)
+            print('Similarity of data points to exemplars:\n\t', spexp)
+            print('Exemplar preference:\n\t', expref)
+        else
+            print('No clusters found!\n')
+        end
+    
+        return exps, spexp, expref
     end
 
   return MM
