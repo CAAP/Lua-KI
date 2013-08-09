@@ -11,6 +11,9 @@ local pairs=pairs
 local print=print
 local next=next
 
+p=require'points'
+local slurp=p.slurp
+
 -- Local Variables for module-only access
 
 -- No more external access after this point
@@ -107,7 +110,7 @@ local function same(x,y)
     return ans
 end
 
-function M.unique(histos)
+local function unique(histos)
     local ret = {}
     local uqs = {}
     local all = {}
@@ -134,7 +137,7 @@ function M.unique(histos)
     return uqs, all
 end
 
-function M.bhistogram(points)
+local function bhistogram(points)
     local ret = {}
     
     for i,kk in pairs(points) do
@@ -186,6 +189,21 @@ function M.stats(points)
     return ret
 end
 
+function M.concise(path)
+    local data = slurp(path,'-?%d+')
+    local hists = bhistogram(data)
+    local uqs = unique(hists)
+    
+    local ret = {}
+    for _,ii in pairs(uqs) do
+        ret[#ret+1]=data(ii)
+    end
+    
+    return ret
+end
+
+M.unique=unique
+M.bhistogram=bhistogram
 M.same=same
 M.maximal=maximal
 M.addition=addition
