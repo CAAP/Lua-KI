@@ -189,12 +189,12 @@ function M.stats(points)
     return ret
 end
 
-function M.concise(path)
+function M.concise(path, ret)
     local data = slurp(path,'-?%d+')
     local hists = bhistogram(data)
     local uqs = unique(hists)
     
-    local ret = {}
+    local ret = ret or {}
     for _,ii in pairs(uqs) do
         ret[#ret+1]=data(ii)
     end
